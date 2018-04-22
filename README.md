@@ -1,95 +1,23 @@
 # House-Price-Regression-NN
 
-from keras.datasets import boston_housing
-(train_data, train_targets), (test_data, test_targets) =boston_housing.load_data()
+# Project description: 
+In this project, the price of house in the suburb of Boston in mid-1970 is described as a function of 13 features such as crime rate, tax, etc. Training and test sets are comprised of 404 and 102 samples, respectively.
 
-# Normalizing the input data
-mean = train_data.mean(axis=0)
-train_data -= mean
-std = train_data.std(axis=0)
-train_data /= std
-test_data -= mean
-test_data /= std
+# Network model: 
+A three-layer neural network is used. The network is comprised of two fully-connected layers with 64 hidden units and rectified linear unit (ReLU) activation as well as the output layer with no activation (a linear layer). 
 
-# 404 training datapoints and 13 features 
-train_data.shape
+# Details: 
+Optimization of stochastic gradient descent algorithm is done using RMSProp. Mean absolute value is performance metric and mean square error is the loss function. Since the size of training set is small, K-fold cross-validation (K=4) is used. Here are the tips for implementation:
 
-from keras import models
-from keras import layers
+1- Mean and standard deviation of training data are computed and then are used for normalizing both training and test data.
 
-def build_model():
-    model = models.Sequential()
-    model.add(layers.Dense(64, activation='relu',
-                            input_shape=(train_data.shape[1],)))
-    model.add(layers.Dense(64, activation='relu'))
-    model.add(layers.Dense(1))
-    model.compile(optimizer='rmsprop', loss='mse', metrics=['mae'])
-    return model
-    
-  # K fold validation 
-import numpy as np
-k=4
-num_val_samples = len(train_data) // k 
-num_epochs = 100
-all_scores = []
-for i in range(k):
-    print('processing fold #', i)
-    val_data = train_data[i * num_val_samples: (i + 1) * num_val_samples] 
-    val_targets = train_targets[i * num_val_samples: (i + 1) * num_val_samples]
-    partial_train_data = np.concatenate( [train_data[:i * num_val_samples],train_data[(i + 1) * num_val_samples:]], axis=0)
-    partial_train_targets = np.concatenate( [train_targets[:i * num_val_samples],train_targets[(i + 1) * num_val_samples:]], axis=0)
-    model = build_model()
-    model.fit(partial_train_data, partial_train_targets,epochs=num_epochs, batch_size=1, verbose=0)
-    val_mse, val_mae = model.evaluate(val_data, val_targets, verbose=0)
-    all_scores.append(val_mae)
-    
-  np.mean(all_scores)
-  
-  num_epochs = 500 
-all_mae_histories = [] 
+2- The model is defined in terms of a function to be called in each iteration of K-fold cross-validation.
 
-for i in range(k):
-    print('processing fold #', i)
-    val_data = train_data[i * num_val_samples: (i + 1) * num_val_samples] 
-    val_targets = train_targets[i * num_val_samples: (i + 1) * num_val_samples]
-    partial_train_data = np.concatenate( [train_data[:i * num_val_samples],train_data[(i + 1) * num_val_samples:]], axis=0)
-    partial_train_targets = np.concatenate( [train_targets[:i * num_val_samples],train_targets[(i + 1) * num_val_samples:]], axis=0)
-    model = build_model()
-    history = model.fit(partial_train_data, partial_train_targets,validation_data=(val_data, val_targets),epochs=num_epochs, batch_size=1, verbose=0)
-    mae_history = history.history['val_mean_absolute_error']
-    all_mae_histories.append(mae_history)
-    
-average_mae_history = [np.mean([x[i] for x in all_mae_histories]) for i in range(num_epochs)]
+3- By setting K=4, at each iteration 1/4 of training data is used as validation data while the rest is used for training the model and then MSE and MAE of the model is evaluated on the validation set.
 
-import matplotlib.pyplot as plt
-plt.plot(range(1, len(average_mae_history) + 1), average_mae_history)
-plt.xlabel('Epochs')
-plt.ylabel('Validation MAE')
-plt.show()
+4- Running the model for 100 epochs, results in average validation score of 3000$ which is the payoff of buying a house using the learned model.
 
-# Excluding first 10 points 
-def smooth_curve(points, factor=0.9):
-    smoothed_points = []
-    for point in points:
-        if smoothed_points:
-            previous = smoothed_points[-1]
-            smoothed_points.append(previous * factor + point * (1 - factor))
-        else:
-            smoothed_points.append(point)
-    return smoothed_points
-    
-smooth_mae_history = smooth_curve(average_mae_history[10:])
-plt.plot(range(1, len(smooth_mae_history) + 1), smooth_mae_history)
-plt.xlabel('Epochs')
-plt.ylabel('Validation MAE')
-plt.show()
+5- The model is run for 500 epochs.
 
-model = build_model()
-model.fit(train_data, train_targets,epochs=80, batch_size=16, verbose=0)
-test_mse_score, test_mae_score = model.evaluate(test_data, test_targets)
-
-test_mae_score
- 
-
-
-
+# Modification:
+Since the validation MAE stops improving after 80 epochs, the model is trained only for 80 epochs and then is used for prediction.
